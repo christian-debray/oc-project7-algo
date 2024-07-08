@@ -13,7 +13,7 @@ with open(DATAFILE, "r") as csv_file:
 
 
 def next_combination(action_list: list[Action]):
-    for i in range(1, len(action_list)):
+    for i in range(1, len(action_list) + 1):
         for comb in combinations(action_list, i):
             yield comb
 
@@ -26,7 +26,7 @@ def comb_str(*act: Action) -> str:
 
 perf = time.perf_counter()
 
-search_data = data
+search_data = data[:10:]
 MAX_VALUE = 500
 explored = 0
 solutions = []
@@ -46,11 +46,14 @@ for comb in next_combination(search_data):
         if stats[1] > best_solution[2]:
             best_solution = (comb, stats[0], stats[1])
 
-sol_str = (
-    "   " + "\n   ".join([str(x) for x in best_solution[0]])
-    if best_solution[0]
-    else "None"
-)
+
+if best_solution[0]:
+    actions_list = [a for a in best_solution[0]]
+    actions_list.sort(key=lambda x: x.value)
+    sol_str = "   " + "\n   ".join([str(x) for x in actions_list])
+else:
+    sol_str = "None"
+
 print(
     f"\n\nBest solution:\n{sol_str}\n value  = {best_solution[1]}\n profit = {best_solution[2]}"
 )
