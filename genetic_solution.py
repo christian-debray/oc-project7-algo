@@ -1,5 +1,6 @@
 from genetics import CombinationChromosome, CombinationSelection
 from action import Share, StockPortfolio
+import random
 
 
 class StockPortfolioSelection(CombinationSelection):
@@ -19,6 +20,16 @@ class StockPortfolioSelection(CombinationSelection):
             return -1
         else:
             return round(objective, 3)
+
+    def random_individual(self, chromosome_size, max_active_genes=.01) -> CombinationChromosome:
+        """"""
+        active_genes = random.randint(0, int(max_active_genes * chromosome_size))
+        indices = [i for i in range(chromosome_size)]
+        genome = [0] * chromosome_size
+        for _ in range(active_genes):
+            idx = indices.pop(random.randrange(0, len(indices)))
+            genome[idx] = 1
+        return CombinationChromosome(genome)
 
     def chromosome2StockPortfolio(self, chrom: CombinationChromosome) -> StockPortfolio:
         shares = list()

@@ -7,6 +7,7 @@ from genetic_solution import StockPortfolioSelection
 
 
 DATAFILE = Path(Path(__file__).parent, "data", "actions_data.csv").resolve()
+DATAFILE = Path(Path(__file__).parent, "data", "dataset2_Python+P7.csv").resolve()
 
 
 def problem_size(search_space):
@@ -20,36 +21,43 @@ data: list[Share] = []
 hash_pow = 0
 hash_all = 0
 with open(DATAFILE, "r") as csv_file:
-    reader = csv.DictReader(csv_file, delimiter=";", quotechar='"')
+    reader = csv.DictReader(csv_file, delimiter=",")
     for row in reader:
-        hash = pow(2, hash_pow)
-        data.append(Share(row["action"], float(row["prix"]), float(row["rendement"]), hash))
-        hash_all = hash_all + hash
-        hash_pow += 1
+        price = float(row.get("price", 0))
+        profit = float(row.get("profit", 0))
+        if profit >= 1:
+            profit = profit / 100
+        if price > 0 and profit > 0:
+            hash = pow(2, hash_pow)
+            data.append(Share(row["name"], price, profit, hash))
+            hash_all = hash_all + hash
+            hash_pow += 1
 
 start = time.perf_counter()
 MAX_VALUE = 500
-local_maxima: list[StockPortfolio] = []
-for i in range(10):
+local_maxima: list[tuple[StockPortfolio, float]] = []
+for i in range(1):
     selection = StockPortfolioSelection(data, 200, MAX_VALUE)
     selection.initialize_population()
     t = 0
-    for _ in range(100):
+    for _ in range(1000):
         t += 1
         selection.select()
-        print(f"{i} / {t}: {round(100*selection.convergence())}% / {selection.best_solution().profit()}\r", end="\n")
+        print(f"{i} / {t}: {round(100*selection.convergence())}% / {selection.best_solution().profit()}\r", end="")
         if selection.stabilized():
+            print("")
             break
     ellapsed = round(time.perf_counter() - start, 3)
-    local_maxima.append(selection.best_solution())
-local_maxima.sort(key=lambda x: x.profit())
+    local_maxima.append((selection.best_solution(), selection.population[0].fitness))
+local_maxima.sort(key=lambda x: x[0].profit())
 
-best = local_maxima[-1]
+best = local_maxima[-1][0]
 best_stock = [s for s in best.stock]
 best_stock.sort(key=lambda x: x.value)
 sol_str = "   " + "\n   ".join([str(x) for x in best_stock])
 print("\n\nBest solution:")
 print(sol_str)
 print(f" value  = {best.total_value()}\n profit = {round(best.profit(), 2)}")
+print(f"(fitness = {local_maxima[-1][1]})")
 
 print(f"\nOptimized algo completed in {ellapsed} seconds")

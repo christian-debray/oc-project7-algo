@@ -1,6 +1,5 @@
 import unittest
 from genetics import CombinationChromosome, CombinationSelection
-import math
 import time
 import random
 
@@ -15,16 +14,8 @@ class TestCombinationChromosome(unittest.TestCase):
         self.assertEqual(chrom.key(), "010010")
 
     def test_mutate(self):
-        """Chromosome mutates by exchanging two random genes"""
+        """Chromosome always mutates by swapping a random gene"""
         genome = [1, 0, 0, 0, 0]
-        # expected mutation proba for this particular genome:
-        # invariant gene exchanges:
-        #    comb(2, 4) = 4!/(2!*(2!)) = 24/4 = 6
-        # all gene exchanges:
-        #    comb(2, 5) = 5!(2*(3!)) = 120/12 = 10
-        invariant_mutations = math.comb(len(genome) - 1, 2)
-        all_mutations = math.comb(len(genome), 2)
-        expected_mutation_proba = 1 - (invariant_mutations / all_mutations)
         chrom1 = CombinationChromosome(genome)
         chrom2 = CombinationChromosome(genome)
         mutation_count = 0
@@ -34,8 +25,8 @@ class TestCombinationChromosome(unittest.TestCase):
             chrom2.mutate()
             if chrom1.key() != chrom2.key():
                 mutation_count += 1
-        self.assertAlmostEqual(
-            mutation_count / tries, expected_mutation_proba, delta=0.05
+        self.assertEqual(
+            mutation_count / tries, 1.0
         )
 
 
@@ -86,8 +77,7 @@ class TestCombinationSelection(unittest.TestCase):
         self.assertGreater(selection.convergence(), initial_convergence)
 
     def test_premature_convergence(self):
-        """Population doesn't converge too quickly
-        """
+        """Population doesn't converge too quickly"""
         pop_size = 200
         chromo_size = 20
         tries = 100
@@ -116,7 +106,7 @@ class TestCombinationSelection(unittest.TestCase):
                 )
             else:
                 optimum_reached += 1
-        self.assertGreaterEqual(optimum_reached, .9*tries)
+        self.assertGreaterEqual(optimum_reached, 0.9 * tries)
 
     def test_select_execution_time(self):
         """Selection is fast enough."""
@@ -125,7 +115,7 @@ class TestCombinationSelection(unittest.TestCase):
         # compare execution time with sorting a big array)
         ellapsed: list[float] = list()
         tries = 100
-        acceptable = 20*self._time_scale()
+        acceptable = 20 * self._time_scale()
         for _ in range(tries):
             selection = CombinationSelection(
                 population_size=pop_size, chromosome_size=chromo_size
@@ -139,11 +129,13 @@ class TestCombinationSelection(unittest.TestCase):
         self.assertLess(max_ellapsed, acceptable)
 
     def _time_scale(self):
+        """Time scale = avg time to sort 1000 elements in a list.
+        """
         s = time.perf_counter()
         for i in range(1000):
             rand_arr = [random.randrange(1, pow(2, 20)) for _ in range(1000)]
             rand_arr.sort()
-        time_scale = (time.perf_counter() - s) / 100
+        time_scale = (time.perf_counter() - s) / 1000
         return time_scale
 
 
@@ -153,6 +145,5 @@ class TestTournamentSelection(unittest.TestCase):
         chromo_size = 100
         for i in range(20):
             chromo_val = random.randrange(1, 2**chromo_size)
-            chromo_seq = (f"{chromo_val:b}").rjust(chromo_size, '0')
+            chromo_seq = (f"{chromo_val:b}").rjust(chromo_size, "0")
             pop.append(CombinationChromosome(chromo_seq))
-        

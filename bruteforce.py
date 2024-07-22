@@ -8,9 +8,9 @@ DATAFILE = Path(Path(__file__).parent, "data", "actions_data.csv").resolve()
 
 data: list[Action] = []
 with open(DATAFILE, "r") as csv_file:
-    reader = csv.DictReader(csv_file, delimiter=";", quotechar='"')
+    reader = csv.DictReader(csv_file, delimiter=",")
     for row in reader:
-        data.append(Action(row["action"], float(row["prix"]), float(row["rendement"])))
+        data.append(Action(row["name"], float(row["price"]), float(row["profit"])))
 
 
 def problem_size(search_space):

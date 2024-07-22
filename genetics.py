@@ -2,40 +2,47 @@ from typing import TypeVar
 import random
 import statistics
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class CombinationChromosome:
-    mutation_proba: float = .75
+    mutation_proba: float = 0.75
 
     def __init__(self, genome):
         self.fitness = -1
         self.genome = [(1 if int(x) else 0) for x in genome]
 
-    def mate(self, other: 'CombinationChromosome') -> 'CombinationChromosome':
-        """"""
+    def mate(self, other: "CombinationChromosome") -> "CombinationChromosome":
+        """Crossover operator. Also applies muttion operator (see mutation_proba).
+
+        """
         if other.genome == self.genome:
-            return CombinationChromosome(self.genome)
-        i1 = random.randrange(1, len(self.genome)//2)
-        i2 = i1 + random.randrange(1, len(self.genome)//2 - 1)
-        offspring_genome = other.genome[:i1] + self.genome[i1:i2] + other.genome[i2:]
-        offspring = CombinationChromosome(offspring_genome)
+            offspring = CombinationChromosome(self.genome)
+        else:
+            i1 = random.randrange(1, len(self.genome) // 2)
+            i2 = i1 + random.randrange(1, len(self.genome) // 2 - 1)
+            offspring_genome = other.genome[:i1] + self.genome[i1:i2] + other.genome[i2:]
+            offspring = CombinationChromosome(offspring_genome)
         if random.random() < self.mutation_proba:
             offspring.mutate()
         return offspring
 
     def mutate(self):
-        """Randomly exchange two genes"""
+        """swap a random gene"""
         g1_idx = random.randrange(0, len(self.genome))
-        g2_idx = random.choice([i for i in range(0, g1_idx)] + [i for i in range(g1_idx + 1, len(self.genome))])
-        assert g1_idx != g2_idx
-        g1 = self.genome[g1_idx]
-        g2 = self.genome[g2_idx]
-        self.genome[g1_idx] = g2
-        self.genome[g2_idx] = g1
+        self.genome[g1_idx] = 1 - self.genome[g1_idx]
+        # g2_idx = random.choice(
+        #     [i for i in range(0, g1_idx)]
+        #     + [i for i in range(g1_idx + 1, len(self.genome))]
+        # )
+        # assert g1_idx != g2_idx
+        # g1 = self.genome[g1_idx]
+        # g2 = self.genome[g2_idx]
+        # self.genome[g1_idx] = g2
+        # self.genome[g2_idx] = g1
 
     def key(self):
-        return ''.join([str(b) for b in self.genome])
+        return "".join([str(b) for b in self.genome])
 
 
 class CombinationSelection:
@@ -43,8 +50,8 @@ class CombinationSelection:
         self.population: list[CombinationChromosome] = list()
         self.distribution: dict[str, int] = {}
         self.population_size = population_size
-        self.elite = .1
-        self.mating_pop = .5
+        self.elite = 0.1
+        self.mating_pop = 0.5
         self.chromosome_size = chromosome_size
         self._convergence_stats: list[float] = []
 
@@ -84,7 +91,7 @@ class CombinationSelection:
             parent1 = random.choice(self.population[:mid])
             parent2 = random.choice(self.population[:mid])
             child = parent1.mate(parent2)
-            if random.random() < .5:
+            if random.random() < 0.5:
                 child.mutate()
             child.fitness = self.fitness_score(child)
             new_generation.append(child)
@@ -95,32 +102,34 @@ class CombinationSelection:
             self.distribution[chrom.key()] = self.distribution.get(chrom.key(), 0) + 1
         self._convergence_stats.append(self.convergence())
 
-    def select_parent(self, first_parent: CombinationChromosome = None) -> CombinationChromosome:
+    def select_parent(
+        self, first_parent: CombinationChromosome = None
+    ) -> CombinationChromosome:
         """Select parents for crossover operation.
         Several strategies are possible: elitism, roulette wheel, tournament, ...
         """
-    
+
     def _tournament_selection(self, pop, k):
-        """Select the fittest chromosome among k random chromosome found in a population
-        """
+        """Select the fittest chromosome among k random chromosome found in a population"""
 
     def convergence(self) -> float:
         return self.distribution[self.population[0].key()] / len(self.population)
 
     def stabilized(self):
-        if len(self._convergence_stats) < 6 or self.convergence() < .5:
+        if len(self._convergence_stats) < 6 or self.convergence() < 0.5:
             return False
-        if self.convergence() > .9:
+        if self.convergence() > 0.9:
             return True
-        if self._convergence_stats[len(self._convergence_stats) - 5] < .5:
+        if self._convergence_stats[len(self._convergence_stats) - 5] < 0.5:
             return
         sample = self._convergence_stats[len(self._convergence_stats) - 5:]
-        return statistics.mean(sample) / max(sample) > .9
+        return statistics.mean(sample) / max(sample) > 0.9
 
 
-def tournament_selection(k, population: list[CombinationChromosome]) -> CombinationChromosome:
-    """Select the fittest chromosome among k elements randomly chosen from a population.
-    """
+def tournament_selection(
+    k, population: list[CombinationChromosome]
+) -> CombinationChromosome:
+    """Select the fittest chromosome among k elements randomly chosen from a population."""
     best = None
     idx_list = [i for i in range(len(population))]
     for _ in range(k):

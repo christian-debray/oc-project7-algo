@@ -20,10 +20,10 @@ data: list[Share] = []
 hash_pow = 0
 hash_all = 0
 with open(DATAFILE, "r") as csv_file:
-    reader = csv.DictReader(csv_file, delimiter=";", quotechar='"')
+    reader = csv.DictReader(csv_file, delimiter=",")
     for row in reader:
         hash = pow(2, hash_pow)
-        data.append(Share(row["action"], float(row["prix"]), float(row["rendement"]), hash))
+        data.append(Share(row["name"], float(row["price"]), float(row["profit"]), hash))
         hash_all = hash_all + hash
         hash_pow += 1
 
