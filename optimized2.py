@@ -35,7 +35,7 @@ with open(DATAFILE, "r") as csv_file:
 
 start = time.perf_counter()
 MAX_VALUE = 500
-local_maxima: list[tuple[StockPortfolio, float]] = []
+local_maxima: list[StockPortfolio] = []
 for i in range(1):
     selection = StockPortfolioSelection(data, 200, MAX_VALUE)
     selection.initialize_population()
@@ -48,16 +48,15 @@ for i in range(1):
             print("")
             break
     ellapsed = round(time.perf_counter() - start, 3)
-    local_maxima.append((selection.best_solution(), selection.population[0].fitness))
-local_maxima.sort(key=lambda x: x[0].profit())
+    local_maxima.append(selection.best_solution())
+local_maxima.sort(key=lambda x: x.profit())
 
-best = local_maxima[-1][0]
+best = local_maxima[-1]
 best_stock = [s for s in best.stock]
 best_stock.sort(key=lambda x: x.value)
 sol_str = "   " + "\n   ".join([str(x) for x in best_stock])
 print("\n\nBest solution:")
 print(sol_str)
 print(f" value  = {best.total_value()}\n profit = {round(best.profit(), 2)}")
-print(f"(fitness = {local_maxima[-1][1]})")
 
 print(f"\nOptimized algo completed in {ellapsed} seconds")

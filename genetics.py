@@ -27,6 +27,21 @@ class CombinationChromosome:
             offspring.mutate()
         return offspring
 
+    def crossover(self, other: "CombinationChromosome") -> tuple["CombinationChromosome", "CombinationChromosome"]:
+        if other.genome == self.genome:
+            offspring = (CombinationChromosome(self.genome), CombinationChromosome(self.genome))
+        else:
+            i1 = random.randrange(1, len(self.genome) // 2)
+            i2 = i1 + random.randrange(1, len(self.genome) // 2 - 1)
+            offspring_genome_1 = other.genome[:i1] + self.genome[i1:i2] + other.genome[i2:]
+            offspring_genome_2 = self.genome[:i1] + other.genome[i1:i2] + self.genome[i2:]
+            offspring = (CombinationChromosome(offspring_genome_1), CombinationChromosome(offspring_genome_2))
+        if random.random() < self.mutation_proba:
+            offspring[0].mutate()
+        if random.random() < self.mutation_proba:
+            offspring[1].mutate()
+        return offspring
+
     def mutate(self):
         """swap a random gene"""
         g1_idx = random.randrange(0, len(self.genome))
@@ -90,11 +105,13 @@ class CombinationSelection:
         while len(new_generation) < self.population_size:
             parent1 = random.choice(self.population[:mid])
             parent2 = random.choice(self.population[:mid])
-            child = parent1.mate(parent2)
-            if random.random() < 0.5:
-                child.mutate()
-            child.fitness = self.fitness_score(child)
-            new_generation.append(child)
+            #child = parent1.mate(parent2)
+            child1, child2 = parent1.crossover(parent2)
+            child1.fitness = self.fitness_score(child1)
+            child2.fitness = self.fitness_score(child2)
+            #child.fitness = self.fitness_score(child)
+            new_generation.append(child1)
+            new_generation.append(child2)
         new_generation.sort(key=lambda x: x.fitness, reverse=True)
         self.population = new_generation
         self.distribution = {}
@@ -124,6 +141,13 @@ class CombinationSelection:
             return
         sample = self._convergence_stats[len(self._convergence_stats) - 5:]
         return statistics.mean(sample) / max(sample) > 0.9
+
+
+def elite_selection(pop: list[CombinationChromosome], elite: float) -> CombinationChromosome:
+    """Select a random chromosome among the n fittest in a population"""
+    limit = int(elite*len(pop))
+    idx = random.randint(0, limit - 1)
+    return pop[idx]
 
 
 def tournament_selection(
