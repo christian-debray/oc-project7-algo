@@ -1,12 +1,13 @@
-from action import Share, StockPortfolio, actions_stats
+from action import Share, StockPortfolio
 import csv
 import time
 from pathlib import Path
-from collections import deque
 import math
+from genetic_solution import StockPortfolioSelection
 
 
 DATAFILE = Path(Path(__file__).parent, "data", "actions_data.csv").resolve()
+DATAFILE = Path(Path(__file__).parent, "data", "dataset2_Python+P7.csv").resolve()
 
 
 def problem_size(search_space):
@@ -22,71 +23,42 @@ hash_all = 0
 with open(DATAFILE, "r") as csv_file:
     reader = csv.DictReader(csv_file, delimiter=",")
     for row in reader:
-        hash = pow(2, hash_pow)
-        data.append(Share(row["name"], float(row["price"]), float(row["profit"]), hash))
-        hash_all = hash_all + hash
-        hash_pow += 1
+        price = float(row.get("price", 0))
+        profit = float(row.get("profit", 0))
+        if profit >= 1:
+            profit = profit / 100
+        if price > 0 and profit > 0:
+            hash = pow(2, hash_pow)
+            data.append(Share(row["name"], price, profit, hash))
+            hash_all = hash_all + hash
+            hash_pow += 1
 
+SERIES = 10
+MAX_GEN = 50
+start = time.perf_counter()
 MAX_VALUE = 500
-search_data = data
-best_combination = (0, None, 0, 0)
-solutions: list[tuple[list[Share], float, float]] = []
-initial_stats = actions_stats(*search_data)
-portfolio_queue = deque([(search_data.copy(), initial_stats[0], initial_stats[1], hash_all)])
-explored = set()
+local_maxima: list[StockPortfolio] = []
+for i in range(SERIES):
+    selection = StockPortfolioSelection(data, 500, MAX_VALUE)
+    selection.initialize_population()
+    t = 0
+    while t < MAX_GEN and not selection.stabilized():
+        t += 1
+        selection.select()
+        print(f"{i} / {t}: {round(100*selection.best_so_far_prevalence())}% / {selection.best_solution().profit()}\r", end="")
+        if selection.stabilized():
+            print("")
+            break
+    ellapsed = round(time.perf_counter() - start, 3)
+    local_maxima.append(selection.best_solution())
+local_maxima.sort(key=lambda x: x.profit())
 
-print("OPTIMIZED ALGO")
-print(f"{len(search_data)} elements in search space.")
-print("Problem size: ", problem_size(search_data))
-print("searching solutions ...")
-
-perf = time.perf_counter()
-idx = 0
-seed = StockPortfolio()
-while seed.total_value() + data[idx].value <= MAX_VALUE:
-    seed = seed.add(data[idx])
-    idx += 1
-best_combination = (seed.profit(), list(iter(seed.stock)), seed.total_value(), 0)
-
-c = 0
-while len(portfolio_queue):
-    ellapsed = round(time.perf_counter() - perf, 3)
-    c += 1
-    portfolio, total_value, profit, hash = portfolio_queue.popleft()
-
-    if hash in explored:
-        continue
-    print(
-        f"searching #{len(explored):<9} / {len(solutions):<9} / {best_combination[0]} ({ellapsed}s)\r",
-        end="",
-    )
-    explored.add(hash)
-    if (total_value <= MAX_VALUE):
-        solutions.append((portfolio, total_value, profit))
-        if profit > best_combination[0]:
-            best_combination = (profit, portfolio, total_value, hash)
-        continue
-    if profit < best_combination[0]:
-        continue
-    for i, s in enumerate(portfolio):
-        next_portfolio = portfolio.copy()
-        next_portfolio.pop(i)
-        next_hash = hash - s.hash_val
-        n_profit = profit - s.value * s.efficiency
-        n_total_value = total_value - s.value
-        if next_hash not in explored and n_profit >= best_combination[0]:
-            portfolio_queue.append((next_portfolio, n_total_value, n_profit, next_hash))
-
-ellapsed = round(time.perf_counter() - perf, 3)
-
-if best_combination[1]:
-    actions_list = [a for a in best_combination[1]]
-    actions_list.sort(key=lambda x: x.value)
-    sol_str = "   " + "\n   ".join([str(x) for x in actions_list])
-    print("\n\nBest solution:", best_combination[3])
-    print(sol_str)
-    print(f" value  = {best_combination[2]}\n profit = {round(best_combination[0], 2)}")
-else:
-    print("No solution found !")
+best = local_maxima[-1]
+best_stock = [s for s in best.stock]
+best_stock.sort(key=lambda x: x.value)
+sol_str = "   " + "\n   ".join([str(x) for x in best_stock])
+print("\n\nBest solution:")
+print(sol_str)
+print(f" value  = {best.total_value()}\n profit = {round(best.profit(), 2)}")
 
 print(f"\nOptimized algo completed in {ellapsed} seconds")
