@@ -1,6 +1,5 @@
 import unittest
-from genetics import CombinationChromosome, CombinationSelection
-import time
+from genetics import CombinationChromosome, KnapSackSelection
 import random
 
 
@@ -11,7 +10,7 @@ class TestCombinationChromosome(unittest.TestCase):
         """Construct a combination chromosome from a list of booleans"""
         genome = [0, 1, 0, 0, 1, 0]
         chrom = CombinationChromosome(genome)
-        self.assertEqual(chrom.key(), "010010")
+        self.assertEqual(chrom.__str__(), "010010")
 
     def test_mutate(self):
         """Chromosome always mutates by swapping a random gene"""
@@ -25,125 +24,148 @@ class TestCombinationChromosome(unittest.TestCase):
             chrom2.mutate()
             if chrom1.key() != chrom2.key():
                 mutation_count += 1
+            self.assertNotEqual(chrom1.key(), chrom2.key())
         self.assertEqual(
             mutation_count / tries, 1.0
         )
 
+    def test_single_point_crossover(self):
+        """Single point crossover combines all genes of both parents in two child chromosome."""
+        chrom1 = CombinationChromosome([1, 1, 0, 0, 0])
+        chrom2 = CombinationChromosome([0, 0, 0, 1, 1])
+        child1, child2 = chrom1.single_point_crossover(chrom2)
+        for _ in range(1000):
+            # crossover uses a random factor...
+            for i in range(len(chrom1.genome)):
+                self.assertEqual(chrom1.genome[i] or chrom2.genome[i], child1.genome[i] or child2.genome[i])
 
-class TestCombinationSelection(unittest.TestCase):
+    def test_double_point_crossover(self):
+        """Double point crossover combines all genes of both parents in two child chromosome."""
+        chrom1 = CombinationChromosome([1, 1, 0, 0, 0])
+        chrom2 = CombinationChromosome([0, 0, 0, 1, 1])
+        child1, child2 = chrom1.two_points_crossover(chrom2)
+        for _ in range(1000):
+            # crossover uses a random factor...
+            for i in range(len(chrom1.genome)):
+                self.assertEqual(chrom1.genome[i] or chrom2.genome[i], child1.genome[i] or child2.genome[i])
+
+    def test_uniform_crossover(self):
+        """Uniform crossover combines all genes of both parents in two child chromosome."""
+        chrom1 = CombinationChromosome([1, 1, 0, 0, 0])
+        chrom2 = CombinationChromosome([0, 0, 0, 1, 1])
+        child1, child2 = chrom1.uniform_crossover(chrom2)
+        for _ in range(1000):
+            # crossover uses a random factor...
+            for i in range(len(chrom1.genome)):
+                self.assertEqual(chrom1.genome[i] or chrom2.genome[i], child1.genome[i] or child2.genome[i])
+
+
+class TestKnapSackSelection(unittest.TestCase):
     """Test methods of ths CombinationSelection class"""
+
+    def test_knapsack_fitness(self):
+        pop_size = 200
+        items = [(1, 10), (2, 15), (3, 5), (4, 32), (5, 23), (8, 42)]
+        max_weight = 12
+        selection = KnapSackSelection(population_size=pop_size, items=items, max_weight=max_weight)
+        chrom1 = CombinationChromosome([1, 0, 0, 0, 0, 0])
+        self.assertEqual(selection.fitness_score(chrom1), 10)
+        chrom2 = CombinationChromosome([1, 1, 1, 1, 1, 1])
+        self.assertEqual(selection.fitness_score(chrom2), -11)
+        chrom2 = CombinationChromosome([0, 1, 0, 1, 1, 0])
+        self.assertEqual(selection.fitness_score(chrom2), 70)
+
+    def test_guess_density(self):
+        """Test guessing of acceptable density of 1s in random chromosomes"""
+        pop_size = 200
+        chromo_size = 100
+        max_weight = 30
+        items = [(1, random.randrange(10, 30)) for _ in range(chromo_size)]
+        selection = KnapSackSelection(population_size=pop_size, items=items, max_weight=max_weight)
+        density = selection.guess_acceptable_density()
+        self.assertAlmostEqual(density, max_weight/chromo_size, delta=.1)
 
     def test_initialize_population(self):
         """Test CombinationSelection constructor and initial population"""
-        pop_size = 50
-        chromo_size = 5
-        selection = CombinationSelection(
-            population_size=pop_size, chromosome_size=chromo_size
-        )
+        pop_size = 200
+        chromo_size = 200
+        items = [(random.randrange(1, 10), random.randrange(20, 30)) for _ in range(chromo_size)]
+        selection = KnapSackSelection(population_size=pop_size, items=items, max_weight=30)
         selection.initialize_population()
         self.assertEqual(len(selection.population), pop_size)
         for i in range(pop_size - 1):
-            self.assertGreaterEqual(selection.population[i].fitness, 0)
-            self.assertGreaterEqual(selection.population[i + 1].fitness, 0)
             self.assertGreaterEqual(
                 selection.population[i].fitness, selection.population[i + 1].fitness
             )
 
-    def test_convergence(self):
+    def test_initial_convergence(self):
         """Initial convergence should be lower than 20% for longer chromosomes."""
         pop_size = 200
-        chromo_size = 20
-        tries = 1000
-        selection = CombinationSelection(
-            population_size=pop_size, chromosome_size=chromo_size
-        )
-        for _ in range(tries):
-            selection.initialize_population()
-            initial_convergence = selection.convergence()
-            self.assertLess(initial_convergence, 0.2)
-
-    def test_select(self):
-        """After a few selection cycles, convergence should increase"""
-        pop_size = 50
-        chromo_size = 10
-        selection = CombinationSelection(
-            population_size=pop_size, chromosome_size=chromo_size
-        )
-        selection.initialize_population()
-        initial_convergence = selection.convergence()
-        tries = 10
-        for _ in range(tries):
-            selection.select()
-        self.assertGreater(selection.convergence(), initial_convergence)
-
-    def test_premature_convergence(self):
-        """Population doesn't converge too quickly"""
-        pop_size = 200
-        chromo_size = 20
-        tries = 100
-        cycles = list()
-        optimum = CombinationChromosome([1 for _ in range(chromo_size)])
-        optimum_reached = 0
-        for _ in range(tries):
-            selection = CombinationSelection(
-                population_size=pop_size, chromosome_size=chromo_size
-            )
-            optimum.fitness = selection.fitness_score(optimum)
-            selection.initialize_population()
-            self.assertLessEqual(selection.convergence(), 0.15)
-            for i in range(50):
-                selection.select()
-                if selection.stabilized():
-                    break
-            cycles.append(i)
-            failure_params = f"cycles = {i}, best = {selection.population[0].fitness}/{optimum.fitness}"
-            if selection.population[0].fitness != optimum.fitness:
-                self.assertAlmostEqual(
-                    selection.population[0].fitness / optimum.fitness,
-                    1,
-                    delta=0.001,
-                    msg=f"premature convergence; {failure_params}",
-                )
-            else:
-                optimum_reached += 1
-        self.assertGreaterEqual(optimum_reached, 0.9 * tries)
-
-    def test_select_execution_time(self):
-        """Selection is fast enough."""
-        pop_size = 100
         chromo_size = 1000
-        # compare execution time with sorting a big array)
-        ellapsed: list[float] = list()
+        items = [(random.randrange(1, 10), random.randrange(20, 30)) for _ in range(chromo_size)]
         tries = 100
-        acceptable = 20 * self._time_scale()
+        selection = KnapSackSelection(population_size=pop_size, items=items, max_weight=30)
+        selection._density = selection.guess_acceptable_density()
         for _ in range(tries):
-            selection = CombinationSelection(
-                population_size=pop_size, chromosome_size=chromo_size
-            )
-            selection.initialize_population()
-            start = time.perf_counter()
+            selection.initialize_population(auto_density=False)
+            initial_convergence = selection.best_so_far_prevalence()
+            fail_msg = "initial_convergence ({}) is not less than .2. Top fittness = {}, density = {}"
+            self.assertLess(
+                initial_convergence,
+                0.2,
+                fail_msg.format(initial_convergence, selection.best_individual().fitness, selection._density))
+
+    def test_select_top_fitess(self):
+        """Fitness of top chromosome should increase after each selection cycle"""
+        pop_size = 200
+        chromo_size = 1000
+        items = [(random.randrange(1, 10), random.randrange(20, 30)) for _ in range(chromo_size)]
+        selection = KnapSackSelection(population_size=pop_size, items=items, max_weight=30)
+        selection.initialize_population()
+        tries = 50
+        fitness_scores = [selection.best_individual().fitness]
+        for _ in range(tries):
+            fitness_scores.append(selection.select().fitness)
+            self.assertGreaterEqual(fitness_scores[-1], fitness_scores[-2])
+
+    def test_stabilized(self):
+        """Test stabilized() method with deterministic population"""
+        pop_size = 100
+        chromo_size = 10
+        max_weight = 30
+        items = [(i + 1, (i + 1) * 10) for i in range(chromo_size)]
+        selection = KnapSackSelection(population_size=pop_size, items=items, max_weight=max_weight)
+        self.assertFalse(selection.stabilized())
+        ideal_chromo = [0, 0, 1, 0, 0, 0, 0, 0, 0, 1]
+        selection.population = []
+        selection.mutation_proba = 0
+        for _ in range(int(pop_size*.9)):
+            x = CombinationChromosome(ideal_chromo)
+            x.fitness = selection.fitness_score(x)
+            selection.add_chromosome(x)
+        while len(selection.population) < pop_size:
+            x = selection.random_individual(chromosome_size=chromo_size)
+            x.fitness = selection.fitness_score(x)
+            selection.add_chromosome(x)
+        self.assertGreaterEqual(selection.best_so_far_prevalence(), .9)
+        for _ in range(10):
             selection.select()
-            ellapsed.append(time.perf_counter() - start)
-        max_ellapsed = max(ellapsed)
-        # longest execution time is below acceptable threshold
-        self.assertLess(max_ellapsed, acceptable)
+        self.assertGreaterEqual(selection.best_so_far_prevalence(), .9)
+        self.assertTrue(selection.stabilized())
 
-    def _time_scale(self):
-        """Time scale = avg time to sort 1000 elements in a list.
-        """
-        s = time.perf_counter()
-        for i in range(1000):
-            rand_arr = [random.randrange(1, pow(2, 20)) for _ in range(1000)]
-            rand_arr.sort()
-        time_scale = (time.perf_counter() - s) / 1000
-        return time_scale
-
-
-class TestTournamentSelection(unittest.TestCase):
-    def test_tournament_selection(self):
-        pop: list[CombinationChromosome] = []
+    def test_convergence(self):
+        """Algo should converge, but at least after 10 generations"""
+        pop_size = 100
         chromo_size = 100
-        for i in range(20):
-            chromo_val = random.randrange(1, 2**chromo_size)
-            chromo_seq = (f"{chromo_val:b}").rjust(chromo_size, "0")
-            pop.append(CombinationChromosome(chromo_seq))
+        items = [(random.randrange(1, 10), random.randrange(20, 30)) for _ in range(chromo_size)]
+        selection = KnapSackSelection(population_size=pop_size, items=items, max_weight=30)
+        selection.mutation_proba = .15
+        selection.initialize_population()
+        max_attempts = 1000
+        attempt = 0
+        while attempt < max_attempts and not selection.stabilized():
+            selection.select()
+            attempt += 1
+        self.assertTrue(selection.stabilized())
+        self.assertLess(attempt, max_attempts)
+        self.assertGreaterEqual(attempt, 10)
