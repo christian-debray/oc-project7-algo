@@ -12,7 +12,7 @@ def distribution(pop: Sequence[CombinationChromosome]) -> dict[float, float]:
     pop_size = len(pop)
     dist = dict()
     for chrom in pop:
-        dist[chrom.fitness] = dist.get(chrom.fitness, 0) + 1/pop_size
+        dist[chrom.fitness] = dist.get(chrom.fitness, 0) + 1 / pop_size
     return dist
 
 
@@ -51,12 +51,13 @@ def print_distribution(selection: KnapSackSelection):
     for f, d in dist.items():
         st = f"{round(f, 2)}: {round(100*d, 1)}%"
         total += d
-        if not med and total >= .5:
+        if not med and total >= 0.5:
             st = f"[{st}]"
             med = True
         dist_str.append(st)
 
     print("distribution: ", " | ".join(dist_str))
+
 
 (csv_file, import_data, export_data) = parse_args()
 if import_data:
@@ -69,7 +70,9 @@ if import_data:
     chromo_size = len(items)
 else:
     chromo_size = 1000
-    items = [(random.randrange(1, 10), random.randrange(20, 30)) for _ in range(chromo_size)]
+    items = [
+        (random.randrange(1, 10), random.randrange(20, 30)) for _ in range(chromo_size)
+    ]
 
 if export_data:
     print(f"Exporting data to {export_data}...")
@@ -81,23 +84,41 @@ if export_data:
 pop_size = 500
 start = time.perf_counter()
 selection = KnapSackSelection(population_size=pop_size, items=items, max_weight=80)
-selection.mutation_proba = .05
-selection.mating_pop = .5
-selection.elite = .1
-selection.crossover_operator = 'single_point_crossover'
+selection.mutation_proba = 0.05
+selection.mating_pop = 0.5
+selection.elite = 0.1
+selection.crossover_operator = "single_point_crossover"
 selection.initialize_population()
-print(f"\nGen {selection.generation}: {selection.best_individual().fitness} {round(100*selection.best_so_far_prevalence(), 1)}%")
+print(
+    f"\nGen {selection.generation}: {selection.best_individual().fitness} {round(100*selection.best_so_far_prevalence(), 1)}%"
+)
 print_distribution(selection)
 MAX_GENERATION = 50
 # generation, best fitness, prevalence, execution time
-scores = [(selection.generation, selection.best_individual().fitness, selection.best_so_far_prevalence(), 0)]
+scores = [
+    (
+        selection.generation,
+        selection.best_individual().fitness,
+        selection.best_so_far_prevalence(),
+        0,
+    )
+]
 while selection.generation < MAX_GENERATION:
     cycle_start = time.perf_counter()
     best = selection.select()
     cycle_time = round(time.perf_counter() - cycle_start, 6)
-    scores.append((selection.generation, best.fitness, selection.best_so_far_prevalence(), cycle_time))
+    scores.append(
+        (
+            selection.generation,
+            best.fitness,
+            selection.best_so_far_prevalence(),
+            cycle_time,
+        )
+    )
     stable = " (STABLE) " if selection.stabilized() else ""
-    print(f"\nGen {selection.generation}{stable}: {best.fitness} {round(100*selection.best_so_far_prevalence(), 1)}% {cycle_time}s")
+    print(
+        f"\nGen {selection.generation}{stable}: {best.fitness} {round(100*selection.best_so_far_prevalence(), 1)}% {cycle_time}s"
+    )
     print_distribution(selection)
 end = time.perf_counter() - start
 print(f"Done in {round(end, 3)}s ({selection.generation} generations)")
@@ -106,6 +127,8 @@ if csv_file:
     print(f"Export to {csv_file}")
     with open(csv_file, "w", encoding="utf8") as f:
         csv_writer = csv.writer(f)
-        csv_writer.writerow(["generation", "best fitness", "prevalence", "execution time"])
+        csv_writer.writerow(
+            ["generation", "best fitness", "prevalence", "execution time"]
+        )
         for r in scores:
             csv_writer.writerow(r)
