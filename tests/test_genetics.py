@@ -148,24 +148,24 @@ class TestKnapSackSelection(unittest.TestCase):
             x.fitness = selection.fitness_score(x)
             selection.add_chromosome(x)
         self.assertGreaterEqual(selection.best_so_far_prevalence(), .9)
-        for _ in range(10):
+        for _ in range(20):
             selection.select()
         self.assertGreaterEqual(selection.best_so_far_prevalence(), .9)
         self.assertTrue(selection.stabilized())
 
     def test_convergence(self):
         """Algo should converge, but at least after 10 generations"""
-        pop_size = 100
+        pop_size = 200
         chromo_size = 100
         items = [(random.randrange(1, 10), random.randrange(20, 30)) for _ in range(chromo_size)]
         selection = KnapSackSelection(population_size=pop_size, items=items, max_weight=30)
         selection.mutation_proba = .15
+        selection.elite = 1/pop_size
+        selection.mating_pop = .5
         selection.initialize_population()
-        max_attempts = 1000
-        attempt = 0
-        while attempt < max_attempts and not selection.stabilized():
+        max_generation = 1000
+        while selection.generation < max_generation and not selection.stabilized():
             selection.select()
-            attempt += 1
         self.assertTrue(selection.stabilized())
-        self.assertLess(attempt, max_attempts)
-        self.assertGreaterEqual(attempt, 10)
+        self.assertLess(selection.generation, max_generation)
+        self.assertGreaterEqual(selection.generation, 10)

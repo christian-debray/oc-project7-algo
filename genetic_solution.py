@@ -1,6 +1,5 @@
 from genetics import CombinationChromosome, CombinationSelection
 from action import Share, StockPortfolio
-import random
 
 
 class StockPortfolioSelection(CombinationSelection):

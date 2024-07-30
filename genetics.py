@@ -2,6 +2,7 @@ from typing import TypeVar, Sequence
 import random
 import statistics
 from abc import abstractmethod
+import math
 
 T = TypeVar("T")
 
@@ -93,6 +94,8 @@ class CombinationSelection:
         self._density = 0.1
         self.mutation_proba = 0.15
         self.crossover_operator = 'single_point_crossover'
+        self.generation = 0
+        self._total_fitness_by_gen: dict[int, float] = dict()
 
     def initialize_population(self, auto_density: bool = True):
         """intitalize population with random individuals"""
@@ -104,6 +107,8 @@ class CombinationSelection:
             self.add_chromosome(chrom)
         self.population.sort(key=lambda x: x.fitness, reverse=True)
         self._convergence_stats = [(self.best_individual().fitness, self.best_so_far_prevalence())]
+        self.generation = 0
+        self.total_fitness()
 
     def guess_acceptable_density(self):
         """Try to guess acceptable density of 1 bits for random individuals.
@@ -158,12 +163,14 @@ class CombinationSelection:
         """
         s = int(self.population_size * self.elite)
         new_generation = self.population[:s]
-        mid = int(self.population_size * self.mating_pop)
-        mating_pop = self.population[:mid]
+        if self.generation < 10:
+            probas = self._make_roulette_probas()
         while len(new_generation) < self.population_size:
-            parent1, parent2 = self.tournament_selection(
-                mating_pop, len(mating_pop) // 5
-            )
+            if self.generation < 10:
+                parent2 = self.roulette_wheel_selection(probas)
+                parent1 = self.roulette_wheel_selection(probas)
+            else:
+                parent1, parent2 = self.tournament_selection(k=10)
             child1, child2 = parent1.crossover(parent2, operator=self.crossover_operator)
             if random.random() < self.mutation_proba:
                 child1.mutate()
@@ -176,26 +183,65 @@ class CombinationSelection:
         new_generation.sort(key=lambda x: x.fitness, reverse=True)
         self.population = new_generation
         self._convergence_stats.append((self.best_individual().fitness, self.best_so_far_prevalence()))
+        self.total_fitness()
+        self.generation += 1
         return self.best_individual()
 
     def best_individual(self) -> CombinationChromosome:
         return self.population[0]
 
     def tournament_selection(
-        self, population: Sequence[CombinationChromosome], k: int
+        self, k: int
     ) -> tuple[CombinationChromosome, CombinationChromosome]:
         """Select the 2 fittest chromosomes among k random chromosomes found in a population."""
-        parent_1: CombinationChromosome = None
-        parent_2: CombinationChromosome = None
+        if self.mating_pop < 1:
+            mid = int(self.population_size * self.mating_pop)
+            population = self.population[:mid]
+        else:
+            population = self.population
         pop_indices = [i for i, _ in enumerate(population)]
-        for _ in range(k // 2):
-            i_1 = pop_indices.pop(random.randrange(0, len(pop_indices)))
-            i_2 = pop_indices.pop(random.randrange(0, len(pop_indices)))
-            if (parent_1 is None) or (parent_1.fitness < population[i_1].fitness):
-                parent_1 = population[i_1]
-            if (parent_2 is None) or (parent_2.fitness < population[i_2].fitness):
-                parent_2 = population[i_2]
-        return (parent_1, parent_2)
+        random.shuffle(pop_indices)
+        p1 = pop_indices[:k]
+        p1.sort(key=lambda x: population[x].fitness, reverse=True)
+        parent1 = population[p1[0]]
+        p2 = pop_indices[:k]
+        p2.sort(key=lambda x: population[x].fitness, reverse=True)
+        parent2 = population[p2[0]]
+        return (parent1, parent2)
+
+    def total_fitness(self):
+        self.generation
+        if self.generation in self._total_fitness_by_gen:
+            return self._total_fitness_by_gen[self.generation]
+        total = 0.0
+        for x in self.population:
+            total += x.fitness if x.fitness > 0 else math.exp(x.fitness)
+        self._total_fitness_by_gen[self.generation] = total
+        return total
+
+    def roulette_wheel_selection(self, probas: list[tuple[float, CombinationChromosome]] = None):
+        if not probas:
+            probas = self._make_roulette_probas()
+        dice = random.random()
+        low = 0
+        high = len(probas)
+        while high - low > 1:
+            t = low + (high - low)//2
+            if probas[t][0] > dice:
+                high = t
+            elif probas[t][0] < dice:
+                low = t
+            else:
+                break
+        return probas[t][1]
+
+    def _make_roulette_probas(self):
+        probas = []
+        cumul = 0.0
+        for i, x in enumerate(self.population):
+            cumul += x.fitness/self.total_fitness()
+            probas.append((cumul, x, i))
+        return probas
 
     def best_so_far_prevalence(self) -> float:
         """Calculates proportion of individuals in population with top fitness score."""
@@ -204,7 +250,6 @@ class CombinationSelection:
         while i < len(self.population) and self.population[i].fitness >= top_fitness:
             i += 1
         return i / len(self.population)
-    
 
     def stabilized(self):
         """Returns True if the population has stabilized in some way, and reached a plateau:
@@ -215,13 +260,15 @@ class CombinationSelection:
         sample_size = 10
         if len(self._convergence_stats) < sample_size:
             return False
-        if self._convergence_stats[-1][1] >= 0.9:
-            return True
         fitness_sample = [x[0] for x in self._convergence_stats[len(self._convergence_stats) - sample_size:]]
-        prevalence_sample = [x[1] for x in self._convergence_stats[len(self._convergence_stats) - sample_size:]]
         if fitness_sample.count(self.best_individual().fitness) == sample_size:
-            return True
-        return statistics.mean(prevalence_sample) / max(prevalence_sample) > 0.9
+            if self._convergence_stats[-1][1] >= 0.9:
+                return True
+            prevalence_sample = [x[1] for x in self._convergence_stats[len(self._convergence_stats) - sample_size:]]
+            stability = statistics.mean(prevalence_sample) / max(prevalence_sample)
+            return stability >= .9
+        else:
+            return False
 
 
 class KnapSackSelection(CombinationSelection):

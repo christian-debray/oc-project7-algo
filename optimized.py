@@ -7,7 +7,7 @@ from genetic_solution import StockPortfolioSelection
 
 
 DATAFILE = Path(Path(__file__).parent, "data", "actions_data.csv").resolve()
-DATAFILE = Path(Path(__file__).parent, "data", "dataset2_Python+P7.csv").resolve()
+DATAFILE = Path(Path(__file__).parent, "data", "dataset1_Python+P7.csv").resolve()
 
 
 def problem_size(search_space):
@@ -28,10 +28,7 @@ with open(DATAFILE, "r") as csv_file:
         if profit >= 1:
             profit = profit / 100
         if price > 0 and profit > 0:
-            hash = pow(2, hash_pow)
-            data.append(Share(row["name"], price, profit, hash))
-            hash_all = hash_all + hash
-            hash_pow += 1
+            data.append(Share(row["name"], price, profit))
 
 SERIES = 10
 MAX_GEN = 50
