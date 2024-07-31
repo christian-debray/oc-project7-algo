@@ -12,7 +12,7 @@ parser.add_argument("datafile")
 parser.add_argument("--pop-size", type=int, nargs="?", default=200)
 parser.add_argument("--max-gen", type=int, nargs="?", default=50)
 parser.add_argument("--attempts", type=int, nargs="?", default=1)
-parser.add_argument("--max-value", type=int, nargs="?", default=500)
+parser.add_argument("--max-value", type=float, nargs="?", default=500)
 args = parser.parse_args()
 
 # DATAFILE = Path(Path(__file__).parent, "data", "actions_data.csv").resolve()
