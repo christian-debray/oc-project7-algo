@@ -66,6 +66,6 @@ else:
 
 print("\n\nBest solution:")
 print(sol_str)
-print(f" value  = {best_solution[1]}\n profit = {best_solution[2]}")
+print(f" value  = {best_solution[1]}\n profit = {round(best_solution[2], 2)}")
 
 print(f"\nBrute force algo completed in {round(ellapsed, 3)} seconds")
