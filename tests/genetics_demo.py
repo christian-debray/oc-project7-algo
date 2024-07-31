@@ -16,6 +16,13 @@ def distribution(pop: Sequence[CombinationChromosome]) -> dict[float, float]:
     return dist
 
 
+def avg_fitness(pop: Sequence[CombinationChromosome]) -> float:
+    total_fitness = 0
+    for x in pop:
+        total_fitness += x.fitness
+    return total_fitness/len(pop)
+
+
 def parse_args():
     p = argparse.ArgumentParser("genetics_demo")
     p.add_argument("csv_file", nargs="?", default="")
@@ -100,24 +107,32 @@ scores = [
         selection.generation,
         selection.best_individual().fitness,
         selection.best_so_far_prevalence(),
-        0,
+        avg_fitness(selection.population),
+        0
     )
 ]
-while selection.generation < MAX_GENERATION:
+stop = 10
+while selection.generation < MAX_GENERATION and stop > 0:
     cycle_start = time.perf_counter()
     best = selection.select()
     cycle_time = round(time.perf_counter() - cycle_start, 6)
+    avg = avg_fitness(selection.population)
     scores.append(
         (
             selection.generation,
             best.fitness,
             selection.best_so_far_prevalence(),
+            avg,
             cycle_time,
         )
     )
-    stable = " (STABLE) " if selection.stabilized() else ""
+    stable = ""
+    if selection.stabilized():
+        stable = ""
+        stop -= 1
+        stable = " (STABLE) "
     print(
-        f"\nGen {selection.generation}{stable}: {best.fitness} {round(100*selection.best_so_far_prevalence(), 1)}% {cycle_time}s"
+        f"\nGen {selection.generation}{stable}: {best.fitness} {round(100*selection.best_so_far_prevalence(), 1)}%  ~ {avg} | {cycle_time}s"
     )
     print_distribution(selection)
 end = time.perf_counter() - start
@@ -128,7 +143,7 @@ if csv_file:
     with open(csv_file, "w", encoding="utf8") as f:
         csv_writer = csv.writer(f)
         csv_writer.writerow(
-            ["generation", "best fitness", "prevalence", "execution time"]
+            ["generation", "best fitness", "prevalence", "avg fitness", "execution time"]
         )
         for r in scores:
             csv_writer.writerow(r)
