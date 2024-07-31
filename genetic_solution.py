@@ -20,19 +20,6 @@ class StockPortfolioSelection(CombinationSelection):
         else:
             return round(objective, 3)
 
-    # def random_individual(self, chromosome_size, max_active_genes=.01) -> CombinationChromosome:
-    #     """"""
-    #     active_genes = random.randint(0, int(max_active_genes * chromosome_size))
-    #     indices = [i for i in range(chromosome_size)]
-    #     genome = [0] * chromosome_size
-    #     for _ in range(active_genes):
-    #         idx = indices.pop(random.randrange(0, len(indices)))
-    #         genome[idx] = 1
-    #     if self._genes_class == list:
-    #         return CombinationChromosome(genome)
-    #     else:
-    #         return CombinationChromosome(self._genes_class(genome))
-
     def chromosome2StockPortfolio(self, chrom: CombinationChromosome) -> StockPortfolio:
         shares = list()
         for g_idx, g_val in enumerate(chrom.genome):

@@ -30,13 +30,18 @@ def problem_size(search_space):
 data: list[Share] = []
 with open(DATAFILE, "r") as csv_file:
     reader = csv.DictReader(csv_file, delimiter=",")
+    r_count = 0
     for row in reader:
+        r_count += 1
         price = float(row.get("price", 0))
         profit = float(row.get("profit", 0))
         if profit >= 1:
             profit = profit / 100
         if price > 0 and profit > 0:
             data.append(Share(row["name"], price, profit))
+
+
+print(f"Input dataset loaded: {len(data)}/{r_count} valid rows from {DATAFILE}.")
 
 SERIES = args.attempts
 MAX_GEN = args.max_gen
@@ -68,6 +73,6 @@ best_stock.sort(key=lambda x: x.value)
 sol_str = "   " + "\n   ".join([str(x) for x in best_stock])
 print("\n\nBest solution:")
 print(sol_str)
-print(f" value  = {best.total_value()}\n profit = {round(best.profit(), 2)}")
+print(f" value  = {round(best.total_value(), 2)}\n profit = {round(best.profit(), 2)}")
 
 print(f"\nOptimized algo completed in {ellapsed} seconds")
